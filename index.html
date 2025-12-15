@@ -6,52 +6,51 @@
   <title>File Hub</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --card: #111827;
+      --bg: #0b1220;
+      --card: #0f172a;
       --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #22c55e;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: linear-gradient(180deg, #020617, var(--bg));
+      background: var(--bg);
       color: var(--text);
     }
     header {
       padding: 16px;
-      text-align: center;
       font-weight: 700;
       font-size: 18px;
+      text-align: center;
     }
-    .container {
-      padding: 16px;
-      display: grid;
-      gap: 12px;
-    }
+    main { padding: 14px; }
     .upload {
       background: var(--card);
-      border: 1px dashed #374151;
-      border-radius: 16px;
-      padding: 20px;
+      border: 1px dashed #334155;
+      border-radius: 18px;
+      padding: 22px;
       text-align: center;
+      margin-bottom: 14px;
     }
     .upload input { display: none; }
     .upload label {
       display: inline-block;
-      padding: 12px 16px;
+      padding: 12px 18px;
       border-radius: 999px;
       background: var(--accent);
-      color: #052e16;
+      color: #020617;
       font-weight: 600;
       cursor: pointer;
     }
+    .files { display: grid; gap: 12px; }
     .file {
       background: var(--card);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 14px;
-      display: flex;
+      display: grid;
+      grid-template-columns: 44px 1fr auto;
       gap: 12px;
       align-items: center;
     }
@@ -63,144 +62,145 @@
       place-items: center;
       background: #020617;
       font-weight: 700;
+      font-size: 12px;
     }
-    .meta {
-      flex: 1;
-      min-width: 0;
-    }
-    .meta .name {
+    .name {
       font-size: 14px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .meta .size {
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .actions {
-      display: flex;
-      gap: 8px;
-    }
+    .size { font-size: 12px; color: var(--muted); }
+    .actions { display: flex; gap: 8px; }
     .actions button {
       border: none;
       border-radius: 10px;
       padding: 8px 10px;
-      background: #1f2933;
+      background: #1e293b;
       color: var(--text);
-      cursor: pointer;
-      font-size: 12px;
+      font-size: 13px;
+    }
+
+    /* Preview */
+    #preview {
+      position: fixed;
+      inset: 0;
+      background: #020617;
+      display: none;
+      flex-direction: column;
+      z-index: 50;
+    }
+    #preview header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      font-size: 14px;
+      border-bottom: 1px solid #1e293b;
+    }
+    #previewContent {
+      flex: 1;
+      overflow: auto;
+      background: #020617;
+    }
+    iframe, embed, img {
+      width: 100%;
+      height: 100%;
+      border: none;
     }
     footer {
       text-align: center;
       font-size: 12px;
       color: var(--muted);
-      padding: 12px;
+      padding: 10px;
     }
   </style>
 </head>
 <body>
-  <header>📂 File Hub</header>
-
-  <main class="container">
+  <header>📁 File Hub</header>
+  <main>
     <div class="upload">
-      <p>Upload PDF, Excel, DOCX, dll</p>
-      <label>
-        Pilih File
-        <input type="file" multiple />
-      </label>
+      <p>Upload & lihat isi PDF, gambar, dll</p>
+      <label>Upload File<input type="file" multiple></label>
     </div>
-
-    <div id="list"></div>
-
-    <!-- Preview Modal -->
-    <div id="preview" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); padding:12px;">
-      <div style="background:#020617; border-radius:16px; height:100%; display:flex; flex-direction:column;">
-        <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
-          <strong id="previewTitle" style="font-size:14px"></strong>
-          <button onclick="closePreview()" style="background:#1f2933;border:none;color:#fff;border-radius:8px;padding:6px 10px">Tutup</button>
-        </div>
-        <iframe id="previewFrame" style="flex:1; border:none; border-radius:0 0 16px 16px; background:#fff"></iframe>
-      </div>
-    </div>
+    <div id="list" class="files"></div>
   </main>
+  <footer>Mobile friendly • Preview • Download</footer>
 
-  <footer>Mobile‑first • Download • Bagikan</footer>
+  <div id="preview">
+    <header>
+      <span id="previewTitle"></span>
+      <button onclick="closePreview()">Tutup</button>
+    </header>
+    <div id="previewContent"></div>
+  </div>
 
   <script>
-    const input = document.querySelector('input[type=file]');
+    const input = document.querySelector('input');
     const list = document.getElementById('list');
 
-    function formatSize(bytes) {
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-    }
-
-    function iconFor(name) {
-      const ext = name.split('.').pop().toLowerCase();
-      if (ext === 'pdf') return 'PDF';
-      if (['xls', 'xlsx'].includes(ext)) return 'XLS';
-      if (['doc', 'docx'].includes(ext)) return 'DOC';
+    const formatSize = b => b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB';
+    const iconFor = n => {
+      const e = n.split('.').pop().toLowerCase();
+      if (e==='pdf') return 'PDF';
+      if (['jpg','png','jpeg','webp'].includes(e)) return 'IMG';
+      if (['xls','xlsx'].includes(e)) return 'XLS';
+      if (['doc','docx'].includes(e)) return 'DOC';
       return 'FILE';
-    }
+    };
 
-    input.addEventListener('change', () => {
-      [...input.files].forEach(file => {
-        const url = URL.createObjectURL(file);
-
-        const el = document.createElement('div');
-        el.className = 'file';
-        el.innerHTML = `
-          <div class="icon">${iconFor(file.name)}</div>
-          <div class="meta">
-            <div class="name">${file.name}</div>
-            <div class="size">${formatSize(file.size)}</div>
+    input.onchange = () => {
+      [...input.files].forEach(f => {
+        const url = URL.createObjectURL(f);
+        const div = document.createElement('div');
+        div.className = 'file';
+        div.innerHTML = `
+          <div class="icon">${iconFor(f.name)}</div>
+          <div>
+            <div class="name">${f.name}</div>
+            <div class="size">${formatSize(f.size)}</div>
           </div>
           <div class="actions">
-            <button class="preview">👁️</button>
-            <button class="download">⬇️</button>
-            <button class="share">🔗</button>
-          </div>
-        `;
+            <button class="previewBtn">👁️</button>
+            <button class="downloadBtn">⬇️</button>
+          </div>`;
 
-        el.querySelector('.download').onclick = () => {
+        div.querySelector('.downloadBtn').onclick = () => {
           const a = document.createElement('a');
-          a.href = url;
-          a.download = file.name;
-          a.click();
+          a.href = url; a.download = f.name; a.click();
         };
 
-        el.querySelector('.preview').onclick = () => {
-          openPreview(file.name, url);
-        };
-
-        el.querySelector('.share').onclick = async () => {
-          if (navigator.share) {
-            try {
-              await navigator.share({
-                title: file.name,
-                text: 'Bagikan file',
-                url
-              });
-            } catch (e) {}
-          } else {
-            alert('Share tidak didukung di browser ini');
-          }
-        };
-
-        list.appendChild(el);
+        div.querySelector('.previewBtn').onclick = () => openPreview(f, url);
+        list.appendChild(div);
       });
-      input.value = '';
-    });
-  function openPreview(name, url) {
-      document.getElementById('previewTitle').textContent = name;
-      document.getElementById('previewFrame').src = url;
-      document.getElementById('preview').style.display = 'block';
+      input.value='';
+    };
+
+    function openPreview(file, url) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const c = document.getElementById('previewContent');
+      c.innerHTML = '';
+      document.getElementById('previewTitle').textContent = file.name;
+
+      if (ext === 'pdf') {
+        const embed = document.createElement('embed');
+        embed.src = url + '#view=FitH';
+        embed.type = 'application/pdf';
+        c.appendChild(embed);
+      } else if (['jpg','jpeg','png','webp'].includes(ext)) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.style.objectFit = 'contain';
+        c.appendChild(img);
+      } else {
+        c.innerHTML = '<p style="padding:16px">Preview di HP terbatas. Silakan download file.</p>';
+      }
+      document.getElementById('preview').style.display = 'flex';
     }
+
     function closePreview() {
-      document.getElementById('previewFrame').src = '';
       document.getElementById('preview').style.display = 'none';
+      document.getElementById('previewContent').innerHTML='';
     }
   </script>
 </body>
