@@ -112,6 +112,17 @@
     </div>
 
     <div id="list"></div>
+
+    <!-- Preview Modal -->
+    <div id="preview" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); padding:12px;">
+      <div style="background:#020617; border-radius:16px; height:100%; display:flex; flex-direction:column;">
+        <div style="padding:10px; display:flex; justify-content:space-between; align-items:center;">
+          <strong id="previewTitle" style="font-size:14px"></strong>
+          <button onclick="closePreview()" style="background:#1f2933;border:none;color:#fff;border-radius:8px;padding:6px 10px">Tutup</button>
+        </div>
+        <iframe id="previewFrame" style="flex:1; border:none; border-radius:0 0 16px 16px; background:#fff"></iframe>
+      </div>
+    </div>
   </main>
 
   <footer>Mobile‑first • Download • Bagikan</footer>
@@ -147,6 +158,7 @@
             <div class="size">${formatSize(file.size)}</div>
           </div>
           <div class="actions">
+            <button class="preview">👁️</button>
             <button class="download">⬇️</button>
             <button class="share">🔗</button>
           </div>
@@ -157,6 +169,10 @@
           a.href = url;
           a.download = file.name;
           a.click();
+        };
+
+        el.querySelector('.preview').onclick = () => {
+          openPreview(file.name, url);
         };
 
         el.querySelector('.share').onclick = async () => {
@@ -177,6 +193,15 @@
       });
       input.value = '';
     });
+  function openPreview(name, url) {
+      document.getElementById('previewTitle').textContent = name;
+      document.getElementById('previewFrame').src = url;
+      document.getElementById('preview').style.display = 'block';
+    }
+    function closePreview() {
+      document.getElementById('previewFrame').src = '';
+      document.getElementById('preview').style.display = 'none';
+    }
   </script>
 </body>
 </html>
